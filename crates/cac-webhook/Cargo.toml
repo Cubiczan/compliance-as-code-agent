@@ -5,7 +5,11 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "PR webhook server for GitHub and Codeberg/Gitea compliance scans"
+readme = "../../README.md"
+keywords = ["compliance", "webhook", "github", "policy"]
+categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
 cac-core = { workspace = true }
@@ -17,7 +21,6 @@ chrono = { workspace = true }
 hex = { workspace = true }
 hmac = { workspace = true }
 reqwest = { workspace = true }
-resilient-call = { git = "https://github.com/icohangar-ops/cubiczan-resilience" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }

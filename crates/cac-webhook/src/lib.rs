@@ -3,6 +3,7 @@ pub mod git;
 pub mod handler;
 pub mod payload;
 pub mod provider;
+pub mod retry;
 pub mod server;
 pub mod signature;
 

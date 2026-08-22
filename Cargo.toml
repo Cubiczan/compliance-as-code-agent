@@ -12,17 +12,19 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-authors = ["Shyam Desigan <cubiczan@noreply.codeberg.org>"]
+authors = ["Shyam Desigan <sam@cubiczan.com>"]
 license = "MIT"
-repository = "https://codeberg.org/cubiczan/compliance-as-code-agent"
+repository = "https://github.com/icohangar-ops/compliance-as-code-agent"
+homepage = "https://github.com/icohangar-ops/compliance-as-code-agent"
 description = "Compliance-as-Code agent: scan, fix, and validate codebases against organizational policies"
+readme = "README.md"
 
 [workspace.dependencies]
-cac-core = { path = "crates/cac-core" }
-cac-scanner = { path = "crates/cac-scanner" }
-cac-fixer = { path = "crates/cac-fixer" }
-cac-validator = { path = "crates/cac-validator" }
-cac-webhook = { path = "crates/cac-webhook" }
+cac-core = { path = "crates/cac-core", version = "0.1.0" }
+cac-scanner = { path = "crates/cac-scanner", version = "0.1.0" }
+cac-fixer = { path = "crates/cac-fixer", version = "0.1.0" }
+cac-validator = { path = "crates/cac-validator", version = "0.1.0" }
+cac-webhook = { path = "crates/cac-webhook", version = "0.1.0" }
 anyhow = "1.0"
 axum = { version = "0.8", features = ["json"] }
 chrono = { version = "0.4", features = ["serde"] }

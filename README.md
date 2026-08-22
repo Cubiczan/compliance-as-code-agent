@@ -30,6 +30,18 @@ cargo run -p cac-cli -- scan --root examples/violations
 cargo run -p cac-cli -- run --root examples/violations --dry-run
 ```
 
+After crates.io publish:
+
+```bash
+cargo install cac-cli
+cac scan --root .
+```
+
+See [PUBLISH.md](PUBLISH.md) for crates.io publish order (`cac-core` → … → `cac-cli`).
+
+## MCP (optional, later)
+
+A thin MCP stdio wrapper around `cac scan` / `cac run` / `cac audit` is planned (same pattern as `@cubiczan/chp-mcp`) but not shipped yet. Use the CLI binary directly until then.
 ## CLI
 
 ```bash

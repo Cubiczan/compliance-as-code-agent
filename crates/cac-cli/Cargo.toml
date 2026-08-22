@@ -5,8 +5,11 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "CLI for Compliance-as-Code: scan, fix, validate"
 readme = "../../README.md"
+keywords = ["compliance", "cli", "policy", "soc2", "gdpr"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "cac"

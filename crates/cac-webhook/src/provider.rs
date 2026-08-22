@@ -1,6 +1,6 @@
 use crate::payload::ProviderKind;
+use crate::retry::{retry, with_timeout, RetryPolicy};
 use reqwest::Client;
-use resilient_call::{retry, with_timeout, RetryPolicy};
 use serde::Serialize;
 use std::time::Duration;
 use thiserror::Error;

@@ -5,7 +5,11 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "Policy engine, violation model, and signed audit ledger for Compliance-as-Code"
+readme = "../../README.md"
+keywords = ["compliance", "policy", "audit", "soc2"]
+categories = ["development-tools"]
 
 [dependencies]
 chrono = { workspace = true }
