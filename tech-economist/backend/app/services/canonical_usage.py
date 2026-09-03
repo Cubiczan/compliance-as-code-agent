@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from app.services.pricing import MODEL_COSTS, ModelCosts, get_model_costs
+from app.services.rust_core import run_rust_core
 
 
 @dataclass
@@ -97,6 +98,16 @@ def from_canonical_payload(payload: Dict[str, Any]) -> CanonicalUsage:
 
 
 def normalize_usage(provider: str, usage: Dict[str, Any]) -> CanonicalUsage:
+    rust_value = run_rust_core("canonical-usage", {"provider": provider, "usage": usage})
+    if isinstance(rust_value, dict):
+        return CanonicalUsage(
+            input_tokens=int(rust_value.get("input_tokens", 0)),
+            output_tokens=int(rust_value.get("output_tokens", 0)),
+            cache_read_input_tokens=int(rust_value.get("cache_read_input_tokens", 0)),
+            cache_creation_input_tokens=int(rust_value.get("cache_creation_input_tokens", 0)),
+            web_search_requests=int(rust_value.get("web_search_requests", 0)),
+        )
+
     provider_key = (provider or "canonical").lower()
     if provider_key in ("openai", "openrouter", "azure"):
         return from_openai_usage(usage)
@@ -113,6 +124,40 @@ def normalize_usage(provider: str, usage: Dict[str, Any]) -> CanonicalUsage:
 
 
 def price_usage(model: str, usage: CanonicalUsage) -> CostBreakdown:
+    rust_value = run_rust_core(
+        "price-usage",
+        {
+            "model": model,
+            "usage": {
+                "input_tokens": usage.input_tokens,
+                "output_tokens": usage.output_tokens,
+                "cache_read_input_tokens": usage.cache_read_input_tokens,
+                "cache_creation_input_tokens": usage.cache_creation_input_tokens,
+                "web_search_requests": usage.web_search_requests,
+            },
+        },
+    )
+    if isinstance(rust_value, dict):
+        rust_usage = rust_value.get("usage") or {}
+        return CostBreakdown(
+            model=str(rust_value.get("model", model)),
+            usage=CanonicalUsage(
+                input_tokens=int(rust_usage.get("input_tokens", 0)),
+                output_tokens=int(rust_usage.get("output_tokens", 0)),
+                cache_read_input_tokens=int(rust_usage.get("cache_read_input_tokens", 0)),
+                cache_creation_input_tokens=int(rust_usage.get("cache_creation_input_tokens", 0)),
+                web_search_requests=int(rust_usage.get("web_search_requests", 0)),
+            ),
+            input_cost_usd=float(rust_value.get("input_cost_usd", 0.0)),
+            output_cost_usd=float(rust_value.get("output_cost_usd", 0.0)),
+            cache_read_cost_usd=float(rust_value.get("cache_read_cost_usd", 0.0)),
+            cache_write_cost_usd=float(rust_value.get("cache_write_cost_usd", 0.0)),
+            web_search_cost_usd=float(rust_value.get("web_search_cost_usd", 0.0)),
+            total_cost_usd=float(rust_value.get("total_cost_usd", 0.0)),
+            pricing_tier=str(rust_value.get("pricing_tier", "canonical")),
+            unknown_model=bool(rust_value.get("unknown_model", False)),
+        )
+
     costs: ModelCosts = get_model_costs(model)
     unknown = canonical_model_name(model) not in MODEL_COSTS
 

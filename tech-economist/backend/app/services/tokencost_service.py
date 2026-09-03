@@ -8,6 +8,8 @@ from tokencost import (
 )
 from tokencost.constants import TOKEN_COSTS
 
+from app.services.rust_core import run_rust_core
+
 # Fallback per-1M token rates when tiktoken encodings are unavailable offline
 FALLBACK_RATES = {
     "gpt-4o": {"input": 2.5, "output": 10.0},
@@ -70,6 +72,13 @@ def estimate_cost(
     prompt: Union[str, List[Dict]],
     completion: str = "",
 ) -> dict:
+    rust_value = run_rust_core(
+        "estimate-cost",
+        {"model": model, "prompt": prompt, "completion": completion},
+    )
+    if isinstance(rust_value, dict):
+        return rust_value
+
     try:
         prompt_cost = float(calculate_prompt_cost(prompt, model))
         completion_cost = float(calculate_completion_cost(completion, model)) if completion else 0.0

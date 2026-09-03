@@ -13,8 +13,10 @@ from app.schemas import (
     RoiScenarioRequest,
     RoiScenarioResponse,
     WorkflowEconomics,
+    WorkflowOut,
 )
 from app.services.benchmarks import INDUSTRY_BENCHMARKS
+from app.services.rust_core import run_rust_core
 from app.services.tokencost_service import estimate_cost
 
 
@@ -28,7 +30,55 @@ def _get_or_create_config(db: Session) -> EnterpriseConfig:
     return config
 
 
+def _workflow_payload(wf: Workflow) -> dict:
+    return {
+        "id": wf.id,
+        "name": wf.name,
+        "category": wf.category,
+        "department": wf.department,
+        "description": wf.description,
+        "default_model": wf.default_model,
+        "manual_baseline_cost_usd": wf.manual_baseline_cost_usd,
+        "expected_value_per_success_usd": wf.expected_value_per_success_usd,
+        "benchmark_roi_median": wf.benchmark_roi_median,
+        "benchmark_cost_per_task_usd": wf.benchmark_cost_per_task_usd,
+        "is_strategic": wf.is_strategic,
+    }
+
+
+def _usage_event_payload(event: UsageEvent) -> dict:
+    return {
+        "workflow_id": event.workflow_id,
+        "total_cost_usd": event.total_cost_usd,
+        "revenue_lift_usd": event.revenue_lift_usd,
+        "successful": event.successful,
+        "prompt_tokens": event.prompt_tokens,
+        "completion_tokens": event.completion_tokens,
+    }
+
+
+def _benchmark_payload() -> list[dict]:
+    return [b.model_dump() for b in INDUSTRY_BENCHMARKS]
+
+
 def compute_eps_impact(config: EnterpriseConfig, net_value_usd: float) -> tuple[float, float]:
+    rust_value = run_rust_core(
+        "eps-impact",
+        {
+            "config": {
+                "shares_outstanding_millions": config.shares_outstanding_millions,
+                "annual_tech_investment_billions": config.annual_tech_investment_billions,
+                "earnings_per_share": config.earnings_per_share,
+            },
+            "net_value_usd": net_value_usd,
+        },
+    )
+    if isinstance(rust_value, dict):
+        return (
+            float(rust_value.get("eps_impact_per_share_usd", 0.0)),
+            float(rust_value.get("eps_at_risk_pct", 0.0)),
+        )
+
     shares = config.shares_outstanding_millions * 1_000_000
     eps_impact = net_value_usd / shares if shares else 0.0
     tech_load = config.annual_tech_investment_billions * 1_000_000_000
@@ -44,6 +94,42 @@ def get_dashboard_summary(db: Session) -> DashboardSummary:
 
     mtd_events = db.query(UsageEvent).filter(UsageEvent.recorded_at >= month_start).all()
     ytd_events = db.query(UsageEvent).filter(UsageEvent.recorded_at >= year_start).all()
+    workflow_stats = get_workflow_economics(db)
+    rust_value = run_rust_core(
+        "dashboard-summary",
+        {
+            "config": {
+                "shares_outstanding_millions": config.shares_outstanding_millions,
+                "annual_tech_investment_billions": config.annual_tech_investment_billions,
+                "earnings_per_share": config.earnings_per_share,
+                "ai_compute_budget_millions": config.ai_compute_budget_millions,
+                "month": now.month,
+            },
+            "mtd_events": [_usage_event_payload(e) for e in mtd_events],
+            "ytd_events": [_usage_event_payload(e) for e in ytd_events],
+            "workflow_economics": [w.model_dump() for w in workflow_stats],
+            "benchmarks": _benchmark_payload(),
+        },
+    )
+    if isinstance(rust_value, dict):
+        return DashboardSummary(
+            total_spend_mtd_usd=float(rust_value.get("total_spend_mtd_usd", 0.0)),
+            total_spend_ytd_usd=float(rust_value.get("total_spend_ytd_usd", 0.0)),
+            portfolio_roi=float(rust_value.get("portfolio_roi", 0.0)),
+            cost_per_successful_task_usd=float(rust_value.get("cost_per_successful_task_usd", 0.0)),
+            successful_tasks_mtd=int(rust_value.get("successful_tasks_mtd", 0)),
+            failed_tasks_mtd=int(rust_value.get("failed_tasks_mtd", 0)),
+            success_rate_pct=float(rust_value.get("success_rate_pct", 0.0)),
+            ai_budget_utilization_pct=float(rust_value.get("ai_budget_utilization_pct", 0.0)),
+            revenue_lift_mtd_usd=float(rust_value.get("revenue_lift_mtd_usd", 0.0)),
+            net_value_mtd_usd=float(rust_value.get("net_value_mtd_usd", 0.0)),
+            eps_impact_per_share_usd=float(rust_value.get("eps_impact_per_share_usd", 0.0)),
+            eps_at_risk_pct=float(rust_value.get("eps_at_risk_pct", 0.0)),
+            projected_annual_spend_millions=float(rust_value.get("projected_annual_spend_millions", 0.0)),
+            benchmark_median_roi=float(rust_value.get("benchmark_median_roi", 0.0)),
+            workflows_underwater=int(rust_value.get("workflows_underwater", 0)),
+            workflows_high_leverage=int(rust_value.get("workflows_high_leverage", 0)),
+        )
 
     def aggregate(events: list[UsageEvent]) -> dict:
         spend = sum(e.total_cost_usd for e in events)
@@ -70,7 +156,6 @@ def get_dashboard_summary(db: Session) -> DashboardSummary:
     projected_annual = (ytd["spend"] / months_elapsed) * 12 / 1_000_000
     budget_util = (mtd["spend"] / (config.ai_compute_budget_millions * 1_000_000 / 12) * 100) if config.ai_compute_budget_millions else 0.0
 
-    workflow_stats = get_workflow_economics(db)
     underwater = sum(1 for w in workflow_stats if w.roi_multiple < 1.0)
     high_leverage = sum(1 for w in workflow_stats if w.roi_multiple >= 3.0)
 
@@ -101,6 +186,31 @@ def get_dashboard_summary(db: Session) -> DashboardSummary:
 
 def get_workflow_economics(db: Session) -> list[WorkflowEconomics]:
     workflows = db.query(Workflow).all()
+    events = db.query(UsageEvent).all()
+
+    rust_value = run_rust_core(
+        "workflow-economics",
+        {
+            "workflows": [_workflow_payload(wf) for wf in workflows],
+            "usage_events": [_usage_event_payload(e) for e in events],
+        },
+    )
+    if isinstance(rust_value, list):
+        return [
+            WorkflowEconomics(
+                workflow=WorkflowOut.model_validate(item["workflow"]),
+                total_spend_usd=float(item.get("total_spend_usd", 0.0)),
+                total_revenue_lift_usd=float(item.get("total_revenue_lift_usd", 0.0)),
+                successful_runs=int(item.get("successful_runs", 0)),
+                failed_runs=int(item.get("failed_runs", 0)),
+                cost_per_successful_task_usd=float(item.get("cost_per_successful_task_usd", 0.0)),
+                roi_multiple=float(item.get("roi_multiple", 0.0)),
+                vs_benchmark_roi=(None if item.get("vs_benchmark_roi") is None else float(item.get("vs_benchmark_roi"))),
+                status=str(item.get("status", "uninstrumented")),
+            )
+            for item in rust_value
+        ]
+
     results = []
 
     for wf in workflows:
@@ -125,8 +235,6 @@ def get_workflow_economics(db: Session) -> list[WorkflowEconomics]:
         else:
             status = "uninstrumented"
 
-        from app.schemas import WorkflowOut
-
         results.append(
             WorkflowEconomics(
                 workflow=WorkflowOut.model_validate(wf),
@@ -150,6 +258,26 @@ def get_monthly_trends(db: Session) -> list[MonthlyTrend]:
         .order_by(MonthlySnapshot.month)
         .all()
     )
+    rust_value = run_rust_core(
+        "monthly-trends",
+        {
+            "snapshots": [
+                {
+                    "month": s.month,
+                    "total_spend_usd": s.total_spend_usd,
+                    "total_revenue_lift_usd": s.total_revenue_lift_usd,
+                    "portfolio_roi": s.portfolio_roi,
+                    "cost_per_successful_task_usd": s.cost_per_successful_task_usd,
+                    "successful_tasks": s.successful_tasks,
+                    "token_volume_millions": s.token_volume_millions,
+                }
+                for s in snapshots
+            ]
+        },
+    )
+    if isinstance(rust_value, list):
+        return [MonthlyTrend(**item) for item in rust_value]
+
     return [
         MonthlyTrend(
             month=s.month,
@@ -166,6 +294,23 @@ def get_monthly_trends(db: Session) -> list[MonthlyTrend]:
 
 def generate_forecast(db: Session, months_ahead: int = 6) -> list[ForecastPoint]:
     trends = get_monthly_trends(db)
+    rust_value = run_rust_core(
+        "forecast",
+        {
+            "trends": [
+                {
+                    "month": t.month,
+                    "total_spend_usd": t.total_spend_usd,
+                    "portfolio_roi": t.portfolio_roi,
+                }
+                for t in trends
+            ],
+            "months_ahead": months_ahead,
+        },
+    )
+    if isinstance(rust_value, list):
+        return [ForecastPoint(**item) for item in rust_value]
+
     if len(trends) < 2:
         return []
 
@@ -199,6 +344,10 @@ def generate_forecast(db: Session, months_ahead: int = 6) -> list[ForecastPoint]
 
 
 def run_roi_scenario(req: RoiScenarioRequest) -> RoiScenarioResponse:
+    rust_value = run_rust_core("roi-scenario", req.model_dump())
+    if isinstance(rust_value, dict):
+        return RoiScenarioResponse(**rust_value)
+
     prompt = "x" * req.avg_prompt_tokens
     completion = "x" * req.avg_completion_tokens
     per_run = estimate_cost(req.model, prompt, completion)
@@ -246,13 +395,37 @@ def refresh_monthly_snapshot(db: Session, month: str) -> None:
     if not events:
         return
 
-    spend = sum(e.total_cost_usd for e in events)
-    lift = sum(e.revenue_lift_usd for e in events if e.successful)
-    successful = sum(1 for e in events if e.successful)
-    failed = sum(1 for e in events if not e.successful)
-    tokens = sum(e.prompt_tokens + e.completion_tokens for e in events) / 1_000_000
-    cost_per_task = spend / successful if successful else 0.0
-    roi = lift / spend if spend else 0.0
+    rust_value = run_rust_core(
+        "monthly-snapshot",
+        {
+            "events": [
+                {
+                    "total_cost_usd": e.total_cost_usd,
+                    "revenue_lift_usd": e.revenue_lift_usd,
+                    "successful": e.successful,
+                    "prompt_tokens": e.prompt_tokens,
+                    "completion_tokens": e.completion_tokens,
+                }
+                for e in events
+            ]
+        },
+    )
+    if isinstance(rust_value, dict):
+        spend = float(rust_value.get("total_spend_usd", 0.0))
+        lift = float(rust_value.get("total_revenue_lift_usd", 0.0))
+        successful = int(rust_value.get("successful_tasks", 0))
+        failed = int(rust_value.get("failed_tasks", 0))
+        cost_per_task = float(rust_value.get("cost_per_successful_task_usd", 0.0))
+        roi = float(rust_value.get("portfolio_roi", 0.0))
+        tokens = float(rust_value.get("token_volume_millions", 0.0))
+    else:
+        spend = sum(e.total_cost_usd for e in events)
+        lift = sum(e.revenue_lift_usd for e in events if e.successful)
+        successful = sum(1 for e in events if e.successful)
+        failed = sum(1 for e in events if not e.successful)
+        tokens = sum(e.prompt_tokens + e.completion_tokens for e in events) / 1_000_000
+        cost_per_task = spend / successful if successful else 0.0
+        roi = lift / spend if spend else 0.0
 
     snapshot = db.query(MonthlySnapshot).filter(MonthlySnapshot.month == month).first()
     if not snapshot:

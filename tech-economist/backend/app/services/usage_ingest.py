@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import UsageIngestRecord
 from app.services.canonical_usage import CanonicalUsage, CostBreakdown, normalize_usage, price_usage
+from app.services.rust_core import run_rust_core
 
 
 def ingest_usage(
@@ -58,6 +59,33 @@ def session_cost_summary(db: Session, session_id: str) -> Dict[str, Any]:
         .order_by(UsageIngestRecord.recorded_at.asc())
         .all()
     )
+
+    rust_value = run_rust_core(
+        "session-summary",
+        {
+            "session_id": session_id,
+            "records": [
+                {
+                    "session_id": r.session_id,
+                    "source": r.source,
+                    "workflow_id": r.workflow_id,
+                    "agent_id": r.agent_id,
+                    "tool_call_id": r.tool_call_id,
+                    "model": r.model,
+                    "provider": r.provider,
+                    "input_tokens": r.input_tokens,
+                    "output_tokens": r.output_tokens,
+                    "cache_read_input_tokens": r.cache_read_input_tokens,
+                    "cache_creation_input_tokens": r.cache_creation_input_tokens,
+                    "total_cost_usd": r.total_cost_usd,
+                    "recorded_at": r.recorded_at.isoformat(),
+                }
+                for r in rows
+            ],
+        },
+    )
+    if isinstance(rust_value, dict):
+        return rust_value
 
     if not rows:
         return {

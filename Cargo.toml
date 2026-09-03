@@ -6,6 +6,7 @@ members = [
     "crates/cac-validator",
     "crates/cac-webhook",
     "crates/cac-cli",
+    "crates/te-core",
 ]
 resolver = "2"
 
