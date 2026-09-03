@@ -1,0 +1,65 @@
+{
+  "name": "@cubiczan/compliance-as-code-mcp",
+  "version": "0.1.0",
+  "description": "Stdio MCP pipe for Cubiczan Compliance-as-Code — scan, fix, validate, and read the signed audit ledger via the real cac CLI. No LLM required for detection.",
+  "mcpName": "io.github.cubiczan/compliance-as-code-mcp",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "compliance-as-code-mcp": "./dist/index.js",
+    "cac-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "server.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"const fs=require('fs');const p='dist/index.js';let t=fs.readFileSync(p,'utf8');if(!t.startsWith('#!'))fs.writeFileSync(p,'#!/usr/bin/env node\\n'+t);fs.chmodSync(p,0o755)\"",
+    "start": "node dist/index.js",
+    "dev": "node --import tsx src/index.ts",
+    "test": "npm run build && node --import tsx --test test/mcp.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "compliance-as-code",
+    "policy-as-code",
+    "soc2",
+    "gdpr",
+    "audit-trail",
+    "static-analysis",
+    "claude",
+    "cursor",
+    "cubiczan"
+  ],
+  "author": "Shyam Desigan <sam@cubiczan.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cubiczan/compliance-as-code-agent.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://github.com/Cubiczan/compliance-as-code-agent#readme",
+  "bugs": {
+    "url": "https://github.com/Cubiczan/compliance-as-code-agent/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

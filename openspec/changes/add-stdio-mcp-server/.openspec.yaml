@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-03
+goal: Add a Cubiczan stdio MCP server that wraps the existing cac CLI without
+  reimplementing policy or requiring an LLM.

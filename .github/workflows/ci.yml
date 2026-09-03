@@ -11,3 +11,24 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo check
+
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - name: Build cac engine
+        run: cargo build -p cac-cli
+      - name: Install and test MCP
+        working-directory: mcp
+        run: |
+          npm ci
+          npm test
+        env:
+          CAC_BIN: ${{ github.workspace }}/target/debug/cac

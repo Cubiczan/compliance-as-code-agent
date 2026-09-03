@@ -27,3 +27,17 @@ jobs:
           ./target/release/cac scan --root examples/violations --format json > /tmp/report.json
           COUNT=$(python3 -c "import json; print(json.load(open('/tmp/report.json'))['violations'].__len__())")
           test "$COUNT" -gt 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: MCP tools/list + scan fixture
+        working-directory: mcp
+        run: |
+          npm ci
+          npm test
+        env:
+          CAC_BIN: ${{ github.workspace }}/target/release/cac

@@ -30,6 +30,65 @@ cargo run -p cac-cli -- scan --root examples/violations
 cargo run -p cac-cli -- run --root examples/violations --dry-run
 ```
 
+## MCP (Cursor / Claude Code)
+
+CHP is the lock; MCP is the pipe. [`@cubiczan/compliance-as-code-mcp`](mcp/README.md) exposes the same Detector / Fixer / Validator / audit ledger as stdio tools — no webhook, no LLM for detection. Same install shape as [`@cubiczan/chp-mcp`](https://www.npmjs.com/package/@cubiczan/chp-mcp) and [`@cubiczan/codesentinel-mcp`](https://www.npmjs.com/package/@cubiczan/codesentinel-mcp).
+
+```bash
+cargo build --release -p cac-cli
+export CAC_BIN="$(pwd)/target/release/cac"
+npm install --prefix mcp && npm run build --prefix mcp
+node mcp/dist/index.js          # starts stdio MCP
+```
+
+### Cursor / Claude Desktop (`mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "compliance-as-code": {
+      "command": "npx",
+      "args": ["-y", "@cubiczan/compliance-as-code-mcp"],
+      "env": {
+        "CAC_BIN": "/absolute/path/to/cac"
+      }
+    }
+  }
+}
+```
+
+From a clone (package not yet on npm):
+
+```json
+{
+  "mcpServers": {
+    "compliance-as-code": {
+      "command": "node",
+      "args": ["/absolute/path/to/compliance-as-code-agent/mcp/dist/index.js"],
+      "env": {
+        "CAC_BIN": "/absolute/path/to/compliance-as-code-agent/target/release/cac"
+      }
+    }
+  }
+}
+```
+
+### Claude Code
+
+```bash
+claude mcp add compliance-as-code -- npx -y @cubiczan/compliance-as-code-mcp
+```
+
+| Tool | Maps to |
+|------|---------|
+| `scan` | Detector (`cac scan`) |
+| `fix` | Fixer (`cac fix`) |
+| `validate` | Validator (`cac validate`) |
+| `run` | Full pipeline (`cac run`) |
+| `audit` | Signed `.cac/audit.jsonl` |
+
+See [mcp/README.md](mcp/README.md) for arguments, tests, and later npm publish notes.
+
 ## CLI
 
 ```bash

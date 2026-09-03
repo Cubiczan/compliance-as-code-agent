@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  Brand: Cubiczan (never CubicZan).
+  This repo is Rust: cac-cli (scan, fix, validate, run, audit, serve).
+  Policy engine is offline YAML packs in policies/; do not reimplement it.
+  Sibling MCP pattern: @cubiczan/chp-mcp and @cubiczan/codesentinel-mcp
+  (stdio MCP, Cursor mcp.json, `claude mcp add` one-liner).
+  CHP is the lock; MCP is the pipe.
+  Package name: @cubiczan/compliance-as-code-mcp
+  Do not npm publish from this change.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
