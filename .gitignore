@@ -1,4 +1,5 @@
 /target/
+crates/te-core/target/
 **/*.rs.bk
 .cac/
 *.swp
