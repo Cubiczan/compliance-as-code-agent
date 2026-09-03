@@ -24,6 +24,6 @@ jobs:
 
       - name: Validate example violations are detected
         run: |
-          ./target/release/cac scan --root examples/violations --format json > /tmp/report.json
+          ./target/release/cac scan --root examples/violations --format json > /tmp/report.json || true
           COUNT=$(python3 -c "import json; print(json.load(open('/tmp/report.json'))['violations'].__len__())")
           test "$COUNT" -gt 0
