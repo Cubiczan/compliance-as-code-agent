@@ -9,6 +9,10 @@ pub const DEFAULT_SKIP_DIRS: &[&str] = &[
     "build",
     ".venv",
     "vendor",
+    // Embedded demo apps are scanned separately from the repo-level compliance gate.
+    "examples",
+    "bd-coach",
+    "tech-economist",
 ];
 
 pub fn should_skip_entry(path: &Path, root: &Path) -> bool {
@@ -55,4 +59,34 @@ pub fn is_likely_false_positive(line: &str, matched: &str) -> bool {
         return true;
     }
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_skip_entry;
+    use std::path::Path;
+
+    #[test]
+    fn skips_embedded_demo_roots() {
+        assert!(should_skip_entry(
+            Path::new("tech-economist/frontend/src/App.tsx"),
+            Path::new(".")
+        ));
+        assert!(should_skip_entry(
+            Path::new("bd-coach/bd-coach-infra/compose/docker-compose.yml"),
+            Path::new(".")
+        ));
+        assert!(should_skip_entry(
+            Path::new("examples/violations/sample.rs"),
+            Path::new(".")
+        ));
+    }
+
+    #[test]
+    fn keeps_direct_fixture_scans_enabled() {
+        assert!(!should_skip_entry(
+            Path::new("sample.rs"),
+            Path::new("examples/violations")
+        ));
+    }
 }
