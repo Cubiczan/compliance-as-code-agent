@@ -13,7 +13,7 @@ codesentinel: stdio transport, `io.github.*` namespace convention.
 
 Run it (repo root, after `cargo build`):
 
-    uv run --with mcp python bridge/mcp_server.py
+    uv run --with 'mcp<2' python bridge/mcp_server.py
 """
 
 from __future__ import annotations

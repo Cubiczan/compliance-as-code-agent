@@ -74,6 +74,9 @@ enum Commands {
         #[arg(long)]
         confirmed_by: Option<String>,
     },
+    // CAC-REVIEW: human-confirmation entry — `cac confirm` is the only
+    // command that turns staged PROVISIONAL_LOCK decisions into writes; the
+    // confirmer identity is recorded in .cac/chp/decisions.jsonl.
     /// Human lock: apply fixes staged as PROVISIONAL_LOCK by a prior `fix`
     Confirm {
         /// Decision id reported by the earlier `fix` run
@@ -83,9 +86,6 @@ enum Commands {
         #[arg(long)]
         confirmed_by: String,
     },
-    // CAC-REVIEW: human-confirmation entry — `cac confirm` is the only
-    // command that turns staged PROVISIONAL_LOCK decisions into writes; the
-    // confirmer identity is recorded in .cac/chp/decisions.jsonl.
     /// Show CHP decision-ledger records with integrity status
     Decisions,
     /// Show signed audit trail
