@@ -13,6 +13,12 @@ the native core): `CHP_GATE_BIN`, then `chp-gate` on PATH, then the
 repo-adjacent dev build `../chp-core-rs/target/{release,debug}/chp-gate`. When
 no binary resolves, the native differential is skipped with an explicit
 reason — the corpus truth table still runs against the Python bridge.
+
+When the two implementations diverge, `chp-core-rs` v0.1.0 semantics are
+authoritative: the native substrate is the canonical implementation, and a
+divergence is a defect in the ported copy (the Python bridge) to be fixed
+there, not a local preference. Divergences found before that fix are
+appended to `bridge/differential/divergences.jsonl` for the decision record.
 """
 
 from __future__ import annotations
