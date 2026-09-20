@@ -140,9 +140,13 @@ policies/*.yaml
 `crates/cac-cli/src/main.rs`, `Commands::Packet`): the deterministic scan
 report, the CHP decision register with per-record and aggregate integrity
 status, and the signed audit tail, in one JSON document (`--format json`).
-Every field is read from the sources the agents themselves write — scan
-reports, `.cac/chp/decisions.jsonl`, the audit ledger — so a reviewer can
-reperform the run instead of trusting an agent self-report. When the CHP
+The decisions ledger and audit tail are historical records of the
+agent's run, but the scan section is a **live re-scan at packet-generation
+time** (`Commands::Packet` calls `scan()` fresh), not a stored record of the
+agent's original scan. The reviewer therefore re-runs the scan on the current
+tree and compares it against the historical decisions ledger and audit tail;
+a live scan that no longer matches the recorded decisions is itself evidence
+the tree moved after the run. When the CHP
 bridge is unavailable the packet says so loudly and still carries the scan
 and audit evidence; it never fabricates a register.
 
