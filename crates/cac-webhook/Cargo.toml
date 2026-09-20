@@ -12,6 +12,7 @@ keywords = ["compliance", "webhook", "github", "policy"]
 categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
+cac-chp = { workspace = true }
 cac-core = { workspace = true }
 cac-fixer = { workspace = true }
 cac-scanner = { workspace = true }

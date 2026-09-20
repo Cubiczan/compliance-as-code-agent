@@ -9,5 +9,25 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo check
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      # CHP subprocess bridge: pure-Python consensus-hardening-protocol in a
+      # dedicated venv (avoids PEP 668 on the runner's system python).
+      - run: |
+          python3 -m venv .venv-chp
+          .venv-chp/bin/pip install consensus-hardening-protocol==0.1.1 pytest
+      - run: .venv-chp/bin/python3 -m pytest bridge -q
+      - run: cargo test --workspace
+        env:
+          CAC_PYTHON: ${{ github.workspace }}/.venv-chp/bin/python3

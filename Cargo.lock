@@ -174,10 +174,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
+name = "cac-chp"
+version = "0.1.0"
+dependencies = [
+ "cac-core",
+ "cac-scanner",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "cac-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cac-chp",
  "cac-core",
  "cac-fixer",
  "cac-scanner",
@@ -210,10 +225,13 @@ dependencies = [
 name = "cac-fixer"
 version = "0.1.0"
 dependencies = [
+ "cac-chp",
  "cac-core",
+ "cac-scanner",
  "regex",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
 ]
 
@@ -248,6 +266,7 @@ name = "cac-webhook"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "cac-chp",
  "cac-core",
  "cac-fixer",
  "cac-scanner",

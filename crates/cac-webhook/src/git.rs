@@ -24,7 +24,13 @@ pub fn checkout_pr(
 
     let auth_url = inject_token(clone_url, token);
     run_git(
-        &["clone", "--depth", "50", &auth_url, repo_dir.to_str().unwrap()],
+        &[
+            "clone",
+            "--depth",
+            "50",
+            &auth_url,
+            repo_dir.to_str().unwrap(),
+        ],
         None,
     )?;
 

@@ -1,0 +1,22 @@
+[package]
+name = "cac-chp"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "CHP (consensus-hardening-protocol) gate for auto-fix writes: R0, deterministic adversary, human lock, decision ledger"
+readme = "../../README.md"
+keywords = ["compliance", "chp", "governance", "audit"]
+categories = ["development-tools"]
+
+[dependencies]
+cac-core = { workspace = true }
+cac-scanner = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+tempfile = { workspace = true }
+thiserror = { workspace = true }

@@ -16,6 +16,7 @@ name = "cac"
 path = "src/main.rs"
 
 [dependencies]
+cac-chp = { workspace = true }
 cac-core = { workspace = true }
 cac-scanner = { workspace = true }
 cac-fixer = { workspace = true }

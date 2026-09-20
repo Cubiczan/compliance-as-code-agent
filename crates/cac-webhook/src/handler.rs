@@ -2,6 +2,7 @@ use crate::config::WebhookConfig;
 use crate::git;
 use crate::payload::{PrContext, ProviderKind, PullRequestEvent};
 use crate::provider::ProviderClient;
+use cac_chp::{ChpGate, LockPolicy};
 use cac_core::{
     audit::{default_ledger_path, AuditLedger, AuditPhase, LedgerConfig},
     violation::ScanReport,
@@ -38,10 +39,8 @@ pub struct WebhookHandler {
 
 impl WebhookHandler {
     pub fn new(config: WebhookConfig) -> Self {
-        let provider = ProviderClient::new(
-            config.github_token.clone(),
-            config.codeberg_token.clone(),
-        );
+        let provider =
+            ProviderClient::new(config.github_token.clone(), config.codeberg_token.clone());
         Self {
             config: Arc::new(config),
             provider,
@@ -120,7 +119,10 @@ impl WebhookHandler {
 
         let mut fix_pr_url = None;
         if self.config.auto_fix_pr && !scan.violations.is_empty() {
-            if let Ok(url) = self.create_fix_pr(&ctx, &repo_dir, &scan, token.as_deref()).await {
+            if let Ok(url) = self
+                .create_fix_pr(&ctx, &repo_dir, &scan, token.as_deref())
+                .await
+            {
                 if !url.is_empty() {
                     fix_pr_url = Some(url);
                 }
@@ -186,10 +188,7 @@ impl WebhookHandler {
     }
 
     fn scan_repo(&self, repo_dir: &std::path::Path) -> Result<ScanReport, HandlerError> {
-        let scanner = Scanner::from_config(ScanConfig::new(
-            repo_dir,
-            &self.config.policies_dir,
-        ))?;
+        let scanner = Scanner::from_config(ScanConfig::new(repo_dir, &self.config.policies_dir))?;
         Ok(scanner.scan()?)
     }
 
@@ -202,10 +201,35 @@ impl WebhookHandler {
     ) -> Result<String, HandlerError> {
         let fixer = Fixer::new(repo_dir, false);
         let proposals = fixer.propose(&scan.violations);
-        let applied = fixer.apply(&proposals)?;
+        // The fix-PR write shares the CHP gate: every proposal passes R0,
+        // parity, and the adversary before landing on the isolated fix
+        // branch, and every refusal is recorded. The human PR merge is the
+        // lock surface, so branch mode applies under either lock flag.
+        let gate = ChpGate::new(repo_dir, &self.config.policies_dir);
+        let gated = fixer.apply_gated(&proposals, &gate, LockPolicy::ProposeBranch, None)?;
+        let applied = gated.applied;
+        if gated.pending == 0 {
+            warn!(
+                "auto-fix PR skipped: no proposal passed the CHP gate ({} refused)",
+                gated.refused
+            );
+            return Ok(String::new());
+        }
         if applied == 0 {
             warn!("auto-fix PR skipped: no fixes applied");
             return Ok(String::new());
+        }
+        // Keep CHP gate state (sessions, decision ledger) out of the fix
+        // PR diff — it is recorded locally, not part of the proposal.
+        let exclude = repo_dir.join(".git/info/exclude");
+        match std::fs::read_to_string(&exclude) {
+            Ok(existing) if !existing.lines().any(|l| l.trim() == ".cac/") => {
+                std::fs::write(&exclude, format!("{existing}.cac/\n"))
+                    .map_err(|err| warn!(error = %err, "could not exclude .cac from fix PR"))
+                    .ok();
+            }
+            Ok(_) => {}
+            Err(err) => warn!(error = %err, "could not read .git/info/exclude"),
         }
 
         let validator = Validator::new(repo_dir, &self.config.policies_dir);
@@ -230,10 +254,7 @@ impl WebhookHandler {
         }
         git::push_branch(repo_dir, &fix_branch, token)?;
 
-        let title = format!(
-            "fix(compliance): auto-fix PR #{} violations",
-            ctx.pr_number
-        );
+        let title = format!("fix(compliance): auto-fix PR #{} violations", ctx.pr_number);
         let body = format!(
             "Automated compliance fixes from Compliance-as-Code Agent.\n\n\
              - Original PR: #{}\n\

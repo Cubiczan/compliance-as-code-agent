@@ -43,6 +43,12 @@ pub struct FixProposal {
     pub original_snippet: String,
     pub fixed_snippet: String,
     pub description: String,
+    /// Rule that flagged the violation — carried into CHP decision records.
+    #[serde(default)]
+    pub rule_id: String,
+    /// Policy that owns the rule — carried into CHP decision records.
+    #[serde(default)]
+    pub policy_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

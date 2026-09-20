@@ -57,6 +57,7 @@ impl AuditLedger {
         Self { config }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn record(
         &self,
         phase: AuditPhase,
@@ -140,8 +141,7 @@ pub fn hash_payload(value: &serde_json::Value) -> String {
 }
 
 pub fn sign_payload(key: &str, content_hash: &str) -> String {
-    let mut mac =
-        HmacSha256::new_from_slice(key.as_bytes()).expect("HMAC accepts any key length");
+    let mut mac = HmacSha256::new_from_slice(key.as_bytes()).expect("HMAC accepts any key length");
     mac.update(content_hash.as_bytes());
     hex::encode(mac.finalize().into_bytes())
 }

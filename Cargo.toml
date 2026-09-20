@@ -2,6 +2,7 @@
 members = [
     "crates/cac-core",
     "crates/cac-scanner",
+    "crates/cac-chp",
     "crates/cac-fixer",
     "crates/cac-validator",
     "crates/cac-webhook",
@@ -23,6 +24,7 @@ readme = "README.md"
 [workspace.dependencies]
 cac-core = { path = "crates/cac-core", version = "0.1.0" }
 cac-scanner = { path = "crates/cac-scanner", version = "0.1.0" }
+cac-chp = { path = "crates/cac-chp", version = "0.1.0" }
 cac-fixer = { path = "crates/cac-fixer", version = "0.1.0" }
 cac-validator = { path = "crates/cac-validator", version = "0.1.0" }
 cac-webhook = { path = "crates/cac-webhook", version = "0.1.0" }

@@ -241,7 +241,5 @@ fn evaluate_required_call(rule: &CompiledRule, file_path: &str, content: &str) -
 }
 
 fn glob_matches(glob: &str, path: &str) -> bool {
-    Pattern::new(glob)
-        .map(|p| p.matches(path))
-        .unwrap_or(false)
+    Pattern::new(glob).map(|p| p.matches(path)).unwrap_or(false)
 }

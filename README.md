@@ -46,9 +46,11 @@ A thin MCP stdio wrapper around `cac scan` / `cac run` / `cac audit` is planned 
 
 ```bash
 cac scan              # Detector agent
-cac fix [--dry-run]   # Fixer agent
+cac fix [--dry-run]   # Fixer agent (writes are CHP-gated; see below)
 cac validate          # Validator agent
 cac run [--dry-run]   # Full detect → fix → validate pipeline
+cac confirm --decision-id <id> --confirmed-by <who>   # Lock a staged fix and land it
+cac decisions         # CHP decision ledger with integrity status
 cac audit             # Show signed audit trail
 cac serve             # PR webhook server (GitHub + Codeberg)
 ```
@@ -60,7 +62,45 @@ cac serve             # PR webhook server (GitHub + Codeberg)
 | `--root` | `.` | Repository root to scan |
 | `--policies` | `policies` | Policy YAML directory |
 | `--format` | `text` | `text` or `json` |
+| `--confirmed-by` | none | Human confirmer for gated fix writes |
 | `--signing-key` | env `CAC_LEDGER_SIGNING_KEY` | HMAC key for audit signatures |
+
+## CHP-gated auto-fix writes
+
+Auto-fix writes are the consequential step, so every real write passes through the
+Consensus Hardening Protocol (CHP) before it lands:
+
+1. **Parity pre-check** — the fix is applied to an isolated copy and re-scanned
+   against the policy definition; the fix must actually resolve the flagged
+   violation. A failure is fatal.
+2. **Deterministic adversary** — guardrails 40 + bounded result 30 + golden
+   parity 30, with evidence executed against the real tree; a failing score is fatal.
+3. **R0 evaluation** — is the fix Scoped, Solvable, Valid, and Worth_it from the
+   violation state? Capitalized result keys; failures are fatal.
+4. **Human lock** — sessions start EXPLORING and stage as PROVISIONAL_LOCK.
+   `cac confirm --decision-id <id> --confirmed-by <who>` runs CHP third-party
+   validation to LOCK the decision before the write lands. A post-write re-scan
+   verifies resolution and reverts the write if the violation persists.
+5. **Decision ledger** — every fix applied AND refused is sealed into
+   `.cac/chp/decisions.jsonl` (append-only JSONL with SHA-256 `body_sha256`
+   integrity, revalidated and exposed on every read).
+
+The gate is structural, not disciplinary: `Fixer::apply` refuses real writes
+(`GateRequired`) and only `apply_gated` can touch disk. Scanning stays ungated.
+
+### Environment
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CAC_CHP_REQUIRE_HUMAN_LOCK` | `1` | Require a named human confirmer before any fix lands. Set to `0` to attribute writes to the opt-out (auto-fix PR mode still proposes branch-only writes) |
+| `CAC_PYTHON` | `python3` | Interpreter used by the CHP subprocess bridge; must have `consensus-hardening-protocol==0.1.1` installed |
+| `CAC_CHP_GATE` | bundled | Override path to `bridge/chp_gate.py` |
+
+The integration uses the lightest honest path: a small Python subprocess bridge
+(`bridge/chp_gate.py`) to the pure-Python `consensus-hardening-protocol` package.
+No native Rust CHP crate exists (`chp-rust-pack` is a Node asset pack), and an
+MCP client would add a server hop the fixer does not need. The bridge fails
+closed when CHP is unavailable.
 
 ## Architecture
 
@@ -94,7 +134,9 @@ On each `pull_request` event (opened, synchronized, reopened):
 1. **Detector** clones the PR head and scans against policies
 2. Posts **commit status** (`compliance-as-code/scan`) — pass or fail
 3. Posts a **PR comment** with violation details
-4. Optionally opens an **auto-fix PR** when `CAC_AUTO_FIX_PR=true`
+4. Optionally opens an **auto-fix PR** when `CAC_AUTO_FIX_PR=true` — each
+   proposal passes the same CHP gate (parity, adversary, R0) before landing on
+   the isolated fix branch, and the human PR merge is the lock surface
 
 See [docs/WEBHOOK_SETUP.md](docs/WEBHOOK_SETUP.md) for GitHub and Codeberg webhook configuration.
 

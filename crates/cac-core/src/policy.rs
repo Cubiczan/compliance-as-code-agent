@@ -104,25 +104,30 @@ impl PolicyPack {
             for rule in &policy.rules {
                 let regex = match rule.kind {
                     RuleKind::SecretPattern | RuleKind::CustomRegex => {
-                        let pattern = rule.pattern.as_ref().ok_or_else(|| {
-                            PolicyError::InvalidRegex {
+                        let pattern =
+                            rule.pattern
+                                .as_ref()
+                                .ok_or_else(|| PolicyError::InvalidRegex {
+                                    rule_id: rule.id.clone(),
+                                    source: regex::Error::Syntax("missing pattern".into()),
+                                })?;
+                        Some(
+                            Regex::new(pattern).map_err(|source| PolicyError::InvalidRegex {
                                 rule_id: rule.id.clone(),
-                                source: regex::Error::Syntax("missing pattern".into()),
-                            }
-                        })?;
-                        Some(Regex::new(pattern).map_err(|source| PolicyError::InvalidRegex {
-                            rule_id: rule.id.clone(),
-                            source,
-                        })?)
+                                source,
+                            })?,
+                        )
                     }
-                    RuleKind::RequiredAnnotation | RuleKind::RequiredCall => {
-                        rule.pattern.as_ref().map(|p| {
+                    RuleKind::RequiredAnnotation | RuleKind::RequiredCall => rule
+                        .pattern
+                        .as_ref()
+                        .map(|p| {
                             Regex::new(p).map_err(|source| PolicyError::InvalidRegex {
                                 rule_id: rule.id.clone(),
                                 source,
                             })
-                        }).transpose()?
-                    }
+                        })
+                        .transpose()?,
                     RuleKind::ForbiddenFile => None,
                 };
 

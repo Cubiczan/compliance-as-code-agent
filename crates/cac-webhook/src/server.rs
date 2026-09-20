@@ -79,7 +79,10 @@ async fn handle_webhook(
 ) -> impl IntoResponse {
     if !verify_request(&state.secret, provider, &headers, &body) {
         warn!("webhook signature verification failed");
-        return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "invalid signature" })));
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "invalid signature" })),
+        );
     }
 
     let event = event_name(provider, &headers);
@@ -132,12 +135,7 @@ fn event_name(provider: ProviderKind, headers: &HeaderMap) -> String {
     .unwrap_or_else(|| "unknown".into())
 }
 
-fn verify_request(
-    secret: &str,
-    provider: ProviderKind,
-    headers: &HeaderMap,
-    body: &[u8],
-) -> bool {
+fn verify_request(secret: &str, provider: ProviderKind, headers: &HeaderMap, body: &[u8]) -> bool {
     if secret.is_empty() || secret == "change-me" {
         return true;
     }

@@ -10,7 +10,11 @@ fn int(value: &Value, key: &str) -> i64 {
 }
 
 fn text(value: &Value, key: &str) -> String {
-    value.get(key).and_then(Value::as_str).unwrap_or("").to_string()
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string()
 }
 
 fn round(value: f64, digits: i32) -> f64 {
@@ -30,17 +34,53 @@ struct ModelCosts {
 fn model_costs(model: &str) -> (ModelCosts, bool) {
     let key = model.trim().to_lowercase();
     let costs = if key == "gpt-4o-mini" || key == "gpt-4.1-mini" {
-        ModelCosts { input: 0.15, output: 0.60, cache_write: 0.19, cache_read: 0.015, web_search: 0.01 }
+        ModelCosts {
+            input: 0.15,
+            output: 0.60,
+            cache_write: 0.19,
+            cache_read: 0.015,
+            web_search: 0.01,
+        }
     } else if key == "gpt-4o" || key == "gpt-4.1" {
-        ModelCosts { input: 2.5, output: 10.0, cache_write: 3.125, cache_read: 0.25, web_search: 0.01 }
+        ModelCosts {
+            input: 2.5,
+            output: 10.0,
+            cache_write: 3.125,
+            cache_read: 0.25,
+            web_search: 0.01,
+        }
     } else if key.starts_with("claude-3-5-sonnet") || key == "claude-sonnet-4-20250514" {
-        ModelCosts { input: 3.0, output: 15.0, cache_write: 3.75, cache_read: 0.30, web_search: 0.01 }
+        ModelCosts {
+            input: 3.0,
+            output: 15.0,
+            cache_write: 3.75,
+            cache_read: 0.30,
+            web_search: 0.01,
+        }
     } else if key == "claude-opus-4-20250514" {
-        ModelCosts { input: 15.0, output: 75.0, cache_write: 18.75, cache_read: 1.5, web_search: 0.01 }
+        ModelCosts {
+            input: 15.0,
+            output: 75.0,
+            cache_write: 18.75,
+            cache_read: 1.5,
+            web_search: 0.01,
+        }
     } else if key == "o1-mini" {
-        ModelCosts { input: 1.1, output: 4.4, cache_write: 1.375, cache_read: 0.11, web_search: 0.01 }
+        ModelCosts {
+            input: 1.1,
+            output: 4.4,
+            cache_write: 1.375,
+            cache_read: 0.11,
+            web_search: 0.01,
+        }
     } else {
-        ModelCosts { input: 3.0, output: 15.0, cache_write: 3.75, cache_read: 0.30, web_search: 0.01 }
+        ModelCosts {
+            input: 3.0,
+            output: 15.0,
+            cache_write: 3.75,
+            cache_read: 0.30,
+            web_search: 0.01,
+        }
     };
 
     let known = matches!(
@@ -82,61 +122,62 @@ fn prompt_to_text(prompt: &Value) -> String {
 
 pub fn canonical_usage(provider: &str, usage: &Value) -> Value {
     let provider_key = provider.trim().to_lowercase();
-    let canonical = if provider_key == "openai" || provider_key == "openrouter" || provider_key == "azure" {
-        let prompt_tokens = int(usage, "prompt_tokens");
-        let cached = usage
-            .get("prompt_tokens_details")
-            .and_then(Value::as_object)
-            .and_then(|d| d.get("cached_tokens"))
-            .and_then(Value::as_i64)
-            .unwrap_or(0);
-        json!({
-            "input_tokens": std::cmp::max(0, prompt_tokens - cached),
-            "output_tokens": int(usage, "completion_tokens"),
-            "cache_read_input_tokens": cached,
-            "cache_creation_input_tokens": 0,
-            "web_search_requests": 0,
-        })
-    } else if provider_key == "anthropic" || provider_key == "claude" {
-        json!({
-            "input_tokens": int(usage, "input_tokens"),
-            "output_tokens": int(usage, "output_tokens"),
-            "cache_read_input_tokens": int(usage, "cache_read_input_tokens"),
-            "cache_creation_input_tokens": int(usage, "cache_creation_input_tokens"),
-            "web_search_requests": 0,
-        })
-    } else if provider_key == "canonical" {
-        json!({
-            "input_tokens": int(usage, "input_tokens"),
-            "output_tokens": int(usage, "output_tokens"),
-            "cache_read_input_tokens": int(usage, "cache_read_input_tokens"),
-            "cache_creation_input_tokens": int(usage, "cache_creation_input_tokens"),
-            "web_search_requests": int(usage, "web_search_requests"),
-        })
-    } else if usage.get("prompt_tokens").is_some() || usage.get("completion_tokens").is_some() {
-        let prompt_tokens = int(usage, "prompt_tokens");
-        let cached = usage
-            .get("prompt_tokens_details")
-            .and_then(Value::as_object)
-            .and_then(|d| d.get("cached_tokens"))
-            .and_then(Value::as_i64)
-            .unwrap_or(0);
-        json!({
-            "input_tokens": std::cmp::max(0, prompt_tokens - cached),
-            "output_tokens": int(usage, "completion_tokens"),
-            "cache_read_input_tokens": cached,
-            "cache_creation_input_tokens": 0,
-            "web_search_requests": 0,
-        })
-    } else {
-        json!({
-            "input_tokens": int(usage, "input_tokens"),
-            "output_tokens": int(usage, "output_tokens"),
-            "cache_read_input_tokens": int(usage, "cache_read_input_tokens"),
-            "cache_creation_input_tokens": int(usage, "cache_creation_input_tokens"),
-            "web_search_requests": int(usage, "web_search_requests"),
-        })
-    };
+    let canonical =
+        if provider_key == "openai" || provider_key == "openrouter" || provider_key == "azure" {
+            let prompt_tokens = int(usage, "prompt_tokens");
+            let cached = usage
+                .get("prompt_tokens_details")
+                .and_then(Value::as_object)
+                .and_then(|d| d.get("cached_tokens"))
+                .and_then(Value::as_i64)
+                .unwrap_or(0);
+            json!({
+                "input_tokens": std::cmp::max(0, prompt_tokens - cached),
+                "output_tokens": int(usage, "completion_tokens"),
+                "cache_read_input_tokens": cached,
+                "cache_creation_input_tokens": 0,
+                "web_search_requests": 0,
+            })
+        } else if provider_key == "anthropic" || provider_key == "claude" {
+            json!({
+                "input_tokens": int(usage, "input_tokens"),
+                "output_tokens": int(usage, "output_tokens"),
+                "cache_read_input_tokens": int(usage, "cache_read_input_tokens"),
+                "cache_creation_input_tokens": int(usage, "cache_creation_input_tokens"),
+                "web_search_requests": 0,
+            })
+        } else if provider_key == "canonical" {
+            json!({
+                "input_tokens": int(usage, "input_tokens"),
+                "output_tokens": int(usage, "output_tokens"),
+                "cache_read_input_tokens": int(usage, "cache_read_input_tokens"),
+                "cache_creation_input_tokens": int(usage, "cache_creation_input_tokens"),
+                "web_search_requests": int(usage, "web_search_requests"),
+            })
+        } else if usage.get("prompt_tokens").is_some() || usage.get("completion_tokens").is_some() {
+            let prompt_tokens = int(usage, "prompt_tokens");
+            let cached = usage
+                .get("prompt_tokens_details")
+                .and_then(Value::as_object)
+                .and_then(|d| d.get("cached_tokens"))
+                .and_then(Value::as_i64)
+                .unwrap_or(0);
+            json!({
+                "input_tokens": std::cmp::max(0, prompt_tokens - cached),
+                "output_tokens": int(usage, "completion_tokens"),
+                "cache_read_input_tokens": cached,
+                "cache_creation_input_tokens": 0,
+                "web_search_requests": 0,
+            })
+        } else {
+            json!({
+                "input_tokens": int(usage, "input_tokens"),
+                "output_tokens": int(usage, "output_tokens"),
+                "cache_read_input_tokens": int(usage, "cache_read_input_tokens"),
+                "cache_creation_input_tokens": int(usage, "cache_creation_input_tokens"),
+                "web_search_requests": int(usage, "web_search_requests"),
+            })
+        };
     canonical
 }
 
@@ -174,7 +215,11 @@ pub fn price_usage(model: &str, usage: &Value) -> Value {
 pub fn estimate_cost(model: &str, prompt: &Value, completion: &str) -> Value {
     let prompt_text = prompt_to_text(prompt);
     let prompt_tokens = approx_tokens(&prompt_text);
-    let completion_tokens = if completion.is_empty() { 0 } else { approx_tokens(completion) };
+    let completion_tokens = if completion.is_empty() {
+        0
+    } else {
+        approx_tokens(completion)
+    };
     let (costs, _) = model_costs(model);
 
     let prompt_cost = prompt_tokens as f64 * costs.input / 1_000_000.0;
@@ -231,12 +276,60 @@ pub fn session_summary(session_id: &str, rows: &[Value]) -> Value {
         let cache_write = int(row, "cache_creation_input_tokens");
         let row_cost = num(row, "total_cost_usd");
 
-        bucket.insert("input_tokens".to_string(), json!(bucket.get("input_tokens").and_then(Value::as_i64).unwrap_or(0) + input_tokens));
-        bucket.insert("output_tokens".to_string(), json!(bucket.get("output_tokens").and_then(Value::as_i64).unwrap_or(0) + output_tokens));
-        bucket.insert("cache_read_input_tokens".to_string(), json!(bucket.get("cache_read_input_tokens").and_then(Value::as_i64).unwrap_or(0) + cache_read));
-        bucket.insert("cache_creation_input_tokens".to_string(), json!(bucket.get("cache_creation_input_tokens").and_then(Value::as_i64).unwrap_or(0) + cache_write));
-        bucket.insert("cost_usd".to_string(), json!(bucket.get("cost_usd").and_then(Value::as_f64).unwrap_or(0.0) + row_cost));
-        bucket.insert("calls".to_string(), json!(bucket.get("calls").and_then(Value::as_i64).unwrap_or(0) + 1));
+        bucket.insert(
+            "input_tokens".to_string(),
+            json!(
+                bucket
+                    .get("input_tokens")
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0)
+                    + input_tokens
+            ),
+        );
+        bucket.insert(
+            "output_tokens".to_string(),
+            json!(
+                bucket
+                    .get("output_tokens")
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0)
+                    + output_tokens
+            ),
+        );
+        bucket.insert(
+            "cache_read_input_tokens".to_string(),
+            json!(
+                bucket
+                    .get("cache_read_input_tokens")
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0)
+                    + cache_read
+            ),
+        );
+        bucket.insert(
+            "cache_creation_input_tokens".to_string(),
+            json!(
+                bucket
+                    .get("cache_creation_input_tokens")
+                    .and_then(Value::as_i64)
+                    .unwrap_or(0)
+                    + cache_write
+            ),
+        );
+        bucket.insert(
+            "cost_usd".to_string(),
+            json!(
+                bucket
+                    .get("cost_usd")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(0.0)
+                    + row_cost
+            ),
+        );
+        bucket.insert(
+            "calls".to_string(),
+            json!(bucket.get("calls").and_then(Value::as_i64).unwrap_or(0) + 1),
+        );
 
         if let Some(agent_id) = row.get("agent_id").and_then(Value::as_str) {
             *by_agent.entry(agent_id.to_string()).or_insert(0.0) += row_cost;
@@ -249,7 +342,10 @@ pub fn session_summary(session_id: &str, rows: &[Value]) -> Value {
     let source = rows[0].get("source").and_then(Value::as_str).unwrap_or("");
     let workflow_id = rows[0].get("workflow_id").cloned().unwrap_or(Value::Null);
     let first = rows[0].get("recorded_at").cloned().unwrap_or(Value::Null);
-    let last = rows.last().and_then(|row| row.get("recorded_at").cloned()).unwrap_or(Value::Null);
+    let last = rows
+        .last()
+        .and_then(|row| row.get("recorded_at").cloned())
+        .unwrap_or(Value::Null);
 
     json!({
         "session_id": session_id,
@@ -267,17 +363,40 @@ pub fn session_summary(session_id: &str, rows: &[Value]) -> Value {
 
 fn aggregate_events(events: &[Value]) -> (f64, f64, i64, i64, f64, f64) {
     let spend: f64 = events.iter().map(|e| num(e, "total_cost_usd")).sum();
-    let lift: f64 = events.iter().filter(|e| e.get("successful").and_then(Value::as_bool).unwrap_or(false)).map(|e| num(e, "revenue_lift_usd")).sum();
-    let successful = events.iter().filter(|e| e.get("successful").and_then(Value::as_bool).unwrap_or(false)).count() as i64;
+    let lift: f64 = events
+        .iter()
+        .filter(|e| {
+            e.get("successful")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+        })
+        .map(|e| num(e, "revenue_lift_usd"))
+        .sum();
+    let successful = events
+        .iter()
+        .filter(|e| {
+            e.get("successful")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+        })
+        .count() as i64;
     let failed = events.len() as i64 - successful;
-    let cost_per_task = if successful > 0 { spend / successful as f64 } else { 0.0 };
+    let cost_per_task = if successful > 0 {
+        spend / successful as f64
+    } else {
+        0.0
+    };
     let roi = if spend > 0.0 { lift / spend } else { 0.0 };
     (spend, lift, successful, failed, cost_per_task, roi)
 }
 
 pub fn eps_impact(config: &Value, net_value_usd: f64) -> Value {
     let shares = num(config, "shares_outstanding_millions") * 1_000_000.0;
-    let eps = if shares > 0.0 { net_value_usd / shares } else { 0.0 };
+    let eps = if shares > 0.0 {
+        net_value_usd / shares
+    } else {
+        0.0
+    };
     let tech_load = num(config, "annual_tech_investment_billions") * 1_000_000_000.0;
     let eps_at_risk_pct = if shares > 0.0 && num(config, "earnings_per_share") > 0.0 {
         tech_load / shares / num(config, "earnings_per_share") * 100.0
@@ -295,11 +414,21 @@ pub fn workflow_economics(workflows: &[Value], usage_events: &[Value]) -> Value 
 
     for wf in workflows {
         let wf_id = wf.get("id").cloned().unwrap_or(Value::Null);
-        let events: Vec<Value> = usage_events.iter().filter(|e| e.get("workflow_id") == Some(&wf_id)).cloned().collect();
+        let events: Vec<Value> = usage_events
+            .iter()
+            .filter(|e| e.get("workflow_id") == Some(&wf_id))
+            .cloned()
+            .collect();
         let (spend, lift, successful, failed, cost_per_task, roi) = aggregate_events(&events);
 
         let benchmark_roi = wf.get("benchmark_roi_median").and_then(Value::as_f64);
-        let vs_benchmark = benchmark_roi.and_then(|bench| if bench > 0.0 { Some(round((roi / bench - 1.0) * 100.0, 1)) } else { None });
+        let vs_benchmark = benchmark_roi.and_then(|bench| {
+            if bench > 0.0 {
+                Some(round((roi / bench - 1.0) * 100.0, 1))
+            } else {
+                None
+            }
+        });
         let status = if roi >= 3.0 {
             "high_leverage"
         } else if roi >= 1.0 {
@@ -339,7 +468,8 @@ pub fn dashboard_summary(
     workflow_economics: &[Value],
     benchmarks: &[Value],
 ) -> Value {
-    let (mtd_spend, mtd_lift, mtd_success, mtd_failed, mtd_cost_per_task, mtd_roi) = aggregate_events(mtd_events);
+    let (mtd_spend, mtd_lift, mtd_success, mtd_failed, mtd_cost_per_task, mtd_roi) =
+        aggregate_events(mtd_events);
     let (ytd_spend, _, _, _, _, _) = aggregate_events(ytd_events);
     let net_value = mtd_lift - mtd_spend;
     let eps = eps_impact(config, net_value);
@@ -350,14 +480,32 @@ pub fn dashboard_summary(
     } else {
         0.0
     };
-    let underwater = workflow_economics.iter().filter(|w| w.get("roi_multiple").and_then(Value::as_f64).unwrap_or(0.0) < 1.0).count() as i64;
-    let high_leverage = workflow_economics.iter().filter(|w| w.get("roi_multiple").and_then(Value::as_f64).unwrap_or(0.0) >= 3.0).count() as i64;
+    let underwater = workflow_economics
+        .iter()
+        .filter(|w| w.get("roi_multiple").and_then(Value::as_f64).unwrap_or(0.0) < 1.0)
+        .count() as i64;
+    let high_leverage = workflow_economics
+        .iter()
+        .filter(|w| w.get("roi_multiple").and_then(Value::as_f64).unwrap_or(0.0) >= 3.0)
+        .count() as i64;
     let benchmark_median = {
-        let items: Vec<f64> = benchmarks.iter().take(8).filter_map(|b| b.get("median_roi").and_then(Value::as_f64)).collect();
-        if items.is_empty() { 0.0 } else { items.iter().sum::<f64>() / items.len() as f64 }
+        let items: Vec<f64> = benchmarks
+            .iter()
+            .take(8)
+            .filter_map(|b| b.get("median_roi").and_then(Value::as_f64))
+            .collect();
+        if items.is_empty() {
+            0.0
+        } else {
+            items.iter().sum::<f64>() / items.len() as f64
+        }
     };
     let success_total = mtd_success + mtd_failed;
-    let success_rate = if success_total > 0 { mtd_success as f64 / success_total as f64 * 100.0 } else { 0.0 };
+    let success_rate = if success_total > 0 {
+        mtd_success as f64 / success_total as f64 * 100.0
+    } else {
+        0.0
+    };
 
     json!({
         "total_spend_mtd_usd": round(mtd_spend, 2),
@@ -384,8 +532,16 @@ pub fn forecast(trends: &[Value], months_ahead: i64) -> Value {
         return Value::Array(vec![]);
     }
 
-    let recent = if trends.len() >= 3 { &trends[trends.len() - 3..] } else { trends };
-    let avg_spend = recent.iter().map(|t| num(t, "total_spend_usd")).sum::<f64>() / recent.len() as f64;
+    let recent = if trends.len() >= 3 {
+        &trends[trends.len() - 3..]
+    } else {
+        trends
+    };
+    let avg_spend = recent
+        .iter()
+        .map(|t| num(t, "total_spend_usd"))
+        .sum::<f64>()
+        / recent.len() as f64;
     let avg_roi = recent.iter().map(|t| num(t, "portfolio_roi")).sum::<f64>() / recent.len() as f64;
     let growth = 1.08_f64;
 
@@ -431,7 +587,11 @@ pub fn monthly_snapshot(events: &[Value]) -> Value {
     }
 
     let (spend, lift, successful, failed, cost_per_task, roi) = aggregate_events(events);
-    let tokens = events.iter().map(|e| int(e, "prompt_tokens") + int(e, "completion_tokens")).sum::<i64>() as f64 / 1_000_000.0;
+    let tokens = events
+        .iter()
+        .map(|e| int(e, "prompt_tokens") + int(e, "completion_tokens"))
+        .sum::<i64>() as f64
+        / 1_000_000.0;
 
     json!({
         "total_spend_usd": round(spend, 2),

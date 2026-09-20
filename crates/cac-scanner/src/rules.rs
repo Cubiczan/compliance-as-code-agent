@@ -40,7 +40,21 @@ pub fn is_binary_or_large(path: &Path, max_size: u64) -> bool {
         .to_lowercase();
     matches!(
         ext.as_str(),
-        "png" | "jpg" | "jpeg" | "gif" | "webp" | "ico" | "pdf" | "zip" | "gz" | "wasm" | "exe" | "dll" | "so" | "dylib" | "lock"
+        "png"
+            | "jpg"
+            | "jpeg"
+            | "gif"
+            | "webp"
+            | "ico"
+            | "pdf"
+            | "zip"
+            | "gz"
+            | "wasm"
+            | "exe"
+            | "dll"
+            | "so"
+            | "dylib"
+            | "lock"
     )
 }
 

@@ -67,6 +67,7 @@ impl ProviderClient {
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn set_result(
         &self,
         provider: ProviderKind,
@@ -91,6 +92,7 @@ impl ProviderClient {
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn set_status(
         &self,
         provider: ProviderKind,
@@ -123,7 +125,8 @@ impl ProviderClient {
                     .codeberg_token
                     .as_ref()
                     .ok_or(ProviderError::MissingToken("Codeberg/Gitea"))?;
-                let url = format!("https://codeberg.org/api/v1/repos/{owner}/{repo}/statuses/{sha}");
+                let url =
+                    format!("https://codeberg.org/api/v1/repos/{owner}/{repo}/statuses/{sha}");
                 self.post_json(&url, token, "token", &body).await
             }
         }
@@ -148,9 +151,11 @@ impl ProviderClient {
                     .github_token
                     .as_ref()
                     .ok_or(ProviderError::MissingToken("GitHub"))?;
-                let url =
-                    format!("https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments");
-                self.post_json(&url, token, "Bearer", &Comment { body }).await
+                let url = format!(
+                    "https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
+                );
+                self.post_json(&url, token, "Bearer", &Comment { body })
+                    .await
             }
             ProviderKind::Gitea => {
                 let token = self
@@ -160,11 +165,13 @@ impl ProviderClient {
                 let url = format!(
                     "https://codeberg.org/api/v1/repos/{owner}/{repo}/issues/{pr_number}/comments"
                 );
-                self.post_json(&url, token, "token", &Comment { body }).await
+                self.post_json(&url, token, "token", &Comment { body })
+                    .await
             }
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn open_fix_pr(
         &self,
         provider: ProviderKind,
@@ -302,10 +309,12 @@ impl ProviderClient {
         )
         .await;
 
-        result.map_err(|e| e.into_source().unwrap_or(ProviderError::Api {
-            status: 0,
-            body: "request timed out".into(),
-        }))
+        result.map_err(|e| {
+            e.into_source().unwrap_or(ProviderError::Api {
+                status: 0,
+                body: "request timed out".into(),
+            })
+        })
     }
 }
 

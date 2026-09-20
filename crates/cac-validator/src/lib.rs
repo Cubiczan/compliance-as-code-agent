@@ -14,7 +14,10 @@ pub struct Validator {
 }
 
 impl Validator {
-    pub fn new(root: impl Into<std::path::PathBuf>, policy_dir: impl Into<std::path::PathBuf>) -> Self {
+    pub fn new(
+        root: impl Into<std::path::PathBuf>,
+        policy_dir: impl Into<std::path::PathBuf>,
+    ) -> Self {
         Self {
             root: root.into(),
             policy_dir: policy_dir.into(),
