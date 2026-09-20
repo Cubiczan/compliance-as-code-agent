@@ -83,10 +83,15 @@ enum Commands {
         #[arg(long)]
         confirmed_by: String,
     },
+    // CAC-REVIEW: human-confirmation entry — `cac confirm` is the only
+    // command that turns staged PROVISIONAL_LOCK decisions into writes; the
+    // confirmer identity is recorded in .cac/chp/decisions.jsonl.
     /// Show CHP decision-ledger records with integrity status
     Decisions,
     /// Show signed audit trail
     Audit,
+    /// Verifiable agent-run packet: scan report, decision register, audit tail
+    Packet,
     /// Start PR webhook server (GitHub + Codeberg/Gitea)
     Serve {
         /// Bind address (overrides CAC_BIND_ADDR)
@@ -361,6 +366,54 @@ fn main() -> Result<()> {
                         e.timestamp, e.phase, e.agent, e.action, e.id
                     );
                 }
+            }
+        }
+        Commands::Packet => {
+            // Agent-run evidence packet: the deterministic scan, the CHP
+            // decision register with integrity status, and the signed audit
+            // tail, assembled from the sources the agents themselves write —
+            // a reviewer can reperform the run instead of trusting a
+            // self-report. The gate read fails closed when the bridge is
+            // unavailable; the packet still carries scan + audit evidence.
+            let report = scan(&cli.globals)?;
+            let gate = ChpGate::new(&cli.globals.root, &cli.globals.policies);
+            let decisions = gate.read_decisions(None).map(Some).unwrap_or_else(|e| {
+                eprintln!("packet: decision register unavailable: {e}");
+                None
+            });
+            let events = ledger.read_all()?;
+            let packet = serde_json::json!({
+                "packet_version": 1,
+                "generated_at": chrono::Utc::now().to_rfc3339(),
+                "root": cli.globals.root.display().to_string(),
+                "scan": {
+                    "scanned_at": report.scanned_at,
+                    "files_scanned": report.files_scanned,
+                    "violation_count": report.violation_count(),
+                    "violations": report.violations,
+                },
+                "decision_register": decisions.map(|d| {
+                    let records = d["records"].as_array().cloned().unwrap_or_default();
+                    serde_json::json!({
+                        "record_count": records.len(),
+                        "all_integrity_valid": d["all_integrity_valid"],
+                        "records": records,
+                    })
+                }),
+                "audit_events": events,
+            });
+            if cli.globals.format == "json" {
+                println!("{}", serde_json::to_string_pretty(&packet)?);
+            } else {
+                let violations = packet["scan"]["violation_count"].as_u64().unwrap_or(0);
+                let records = packet["decision_register"]["record_count"]
+                    .as_u64()
+                    .unwrap_or(0);
+                println!(
+                    "Agent-run packet for {} — violations: {violations}, decisions: {records}, audit events: {}",
+                    packet["root"].as_str().unwrap_or("."),
+                    events.len()
+                );
             }
         }
         Commands::Confirm {
