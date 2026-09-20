@@ -51,9 +51,11 @@ cargo build --release -p cac-cli
 ./target/release/cac scan --root examples/violations
 ```
 
-## Optional MCP wrapper (later)
+## MCP wrapper (shipped from source)
 
-A thin stdio MCP over `cac scan` / `cac run` (similar to `@cubiczan/chp-mcp`) is **not** built yet. Sketch: Node or Rust MCP server exposing `cac_scan`, `cac_validate`, `cac_audit` tools that shell out to the `cac` binary. Track in README; ship after crates.io is live.
+The thin stdio MCP server is **built and ships from source**: `bridge/mcp_server.py` exposes `scan_repository` and `decision_register` as read-only tools that shell out to the compiled `cac` binary — no scanning or gate logic is duplicated, resolution fails closed when no binary exists, and the CHP-gated auto-fix write path is deliberately not exposed. Run it from a repo checkout with `uv run --with 'mcp<2' python bridge/mcp_server.py`.
+
+The crates.io publish sequence is **complete** (verified 2026-09-20: `cac-core`, `cac-scanner`, `cac-fixer`, `cac-validator`, `cac-webhook`, `cac-cli`, all at 0.1.0 with this repository's URL), so `cargo install cac-cli --locked` now provides the `cac` binary the MCP wrapper delegates to. The wrapper itself is Python and currently ships from source, not inside the crate package; packaging it with the crate is deferred until the crates.io install path needs it.
 
 ## Blockers / notes
 
