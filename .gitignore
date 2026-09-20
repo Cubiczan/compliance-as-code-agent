@@ -4,6 +4,8 @@ crates/te-core/target/
 .cac/
 *.swp
 *.swo
+__pycache__/
+*.pyc
 .DS_Store
 .env
 .env.local
