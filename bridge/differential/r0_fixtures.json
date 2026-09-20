@@ -1,0 +1,21 @@
+{
+  "description": "R0 differential corpus: every four-boolean combination, run through the Python bridge and the native chp-gate binary. Expected verdict follows the CHP reference semantics: any FATAL is a HALT refusal, all PASS is a PASS.",
+  "fixtures": [
+    {"id": "all-pass", "solvable": true, "scoped": true, "valid": true, "worth_it": true},
+    {"id": "not-solvable", "solvable": false, "scoped": true, "valid": true, "worth_it": true},
+    {"id": "not-scoped", "solvable": true, "scoped": false, "valid": true, "worth_it": true},
+    {"id": "not-valid", "solvable": true, "scoped": true, "valid": false, "worth_it": true},
+    {"id": "not-worth-it", "solvable": true, "scoped": true, "valid": true, "worth_it": false},
+    {"id": "only-solvable", "solvable": true, "scoped": false, "valid": false, "worth_it": false},
+    {"id": "only-scoped", "solvable": false, "scoped": true, "valid": false, "worth_it": false},
+    {"id": "only-valid", "solvable": false, "scoped": false, "valid": true, "worth_it": false},
+    {"id": "only-worth-it", "solvable": false, "scoped": false, "valid": false, "worth_it": true},
+    {"id": "solvable-scoped", "solvable": true, "scoped": true, "valid": false, "worth_it": false},
+    {"id": "solvable-valid", "solvable": true, "scoped": false, "valid": true, "worth_it": false},
+    {"id": "solvable-worth-it", "solvable": true, "scoped": false, "valid": false, "worth_it": true},
+    {"id": "scoped-valid", "solvable": false, "scoped": true, "valid": true, "worth_it": false},
+    {"id": "scoped-worth-it", "solvable": false, "scoped": true, "valid": false, "worth_it": true},
+    {"id": "valid-worth-it", "solvable": false, "scoped": false, "valid": true, "worth_it": true},
+    {"id": "all-fail", "solvable": false, "scoped": false, "valid": false, "worth_it": false}
+  ]
+}

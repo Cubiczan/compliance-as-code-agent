@@ -209,6 +209,10 @@ impl Fixer {
                 "fix_pr_branch",
             ),
             // Default: nothing lands without a named human confirmer.
+            // CAC-REVIEW: human-lock boundary — writes past this point require
+            // `cac confirm` by a named human; the staged decision (with r0,
+            // adversary, and parity evidence) is recorded in
+            // .cac/chp/decisions.jsonl for the review.
             LockPolicy::RequireHuman if confirmed_by.is_none() => {
                 let detail = format!(
                     "fix staged as {}; nothing written until `cac confirm --decision-id {} --confirmed-by <who>`",
