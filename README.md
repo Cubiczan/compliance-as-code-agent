@@ -39,9 +39,22 @@ cac scan --root .
 
 See [PUBLISH.md](PUBLISH.md) for crates.io publish order (`cac-core` → … → `cac-cli`).
 
-## MCP (optional, later)
+## MCP
 
-A thin MCP stdio wrapper around `cac scan` / `cac run` / `cac audit` is planned (same pattern as `@cubiczan/chp-mcp`) but not shipped yet. Use the CLI binary directly until then.
+A thin MCP stdio wrapper over the deterministic `cac` core ships in
+`bridge/mcp_server.py` (server name `compliance-as-code-agent`). Two tools:
+
+- `scan_repository(root, policies?)` — runs `cac scan --format json` (read-only)
+- `decision_register(root)` — runs `cac decisions --format json` (integrity revalidated)
+
+No scanning or gate logic is duplicated: every call shells out to the compiled
+`cac` binary (resolve via `CAC_CLI_BIN` or `cargo build -p cac-cli`) and fails
+closed when unavailable. The auto-fix WRITE path stays inside the CHP gate and
+is deliberately not exposed over MCP. Run it with:
+
+```bash
+uv run --with 'mcp<2' python bridge/mcp_server.py
+```
 ## CLI
 
 ```bash
@@ -52,6 +65,7 @@ cac run [--dry-run]   # Full detect → fix → validate pipeline
 cac confirm --decision-id <id> --confirmed-by <who>   # Lock a staged fix and land it
 cac decisions         # CHP decision ledger with integrity status
 cac audit             # Show signed audit trail
+cac packet            # Verifiable agent-run packet (scan + decisions + audit tail)
 cac serve             # PR webhook server (GitHub + Codeberg)
 ```
 
@@ -119,6 +133,42 @@ policies/*.yaml
                           │
                     .cac/audit.jsonl
 ```
+
+## Agent-run packets
+
+`cac packet` assembles a verifiable evidence packet (implemented in
+`crates/cac-cli/src/main.rs`, `Commands::Packet`): the deterministic scan
+report, the CHP decision register with per-record and aggregate integrity
+status, and the signed audit tail, in one JSON document (`--format json`).
+Every field is read from the sources the agents themselves write — scan
+reports, `.cac/chp/decisions.jsonl`, the audit ledger — so a reviewer can
+reperform the run instead of trusting an agent self-report. When the CHP
+bridge is unavailable the packet says so loudly and still carries the scan
+and audit evidence; it never fabricates a register.
+
+## R0 differential harness (Python vs native)
+
+The Python subprocess bridge and the native `chp-core-rs` substrate
+independently implement the CHP R0 gate. `bridge/tests/test_r0_differential.py`
+runs the full four-boolean corpus (`bridge/differential/r0_fixtures.json`,
+16 combinations) through both and fails on any verdict divergence, appending
+unexpected divergences to `bridge/differential/divergences.jsonl`. Native
+binary resolution: `CHP_GATE_BIN`, `chp-gate` on PATH, or the repo-adjacent
+dev build `../chp-core-rs/target/{release,debug}/chp-gate`; without a binary
+the native leg skips with an explicit reason while the reference truth table
+still runs against the bridge.
+
+## Review-boundary markers
+
+Boundaries where a reviewer should look before changing behavior carry
+inline `CAC-REVIEW:` markers:
+
+- `crates/cac-fixer/src/lib.rs` — the human-lock boundary: writes past it
+  require `cac confirm` by a named human.
+- `crates/cac-cli/src/main.rs` — the human-confirmation entry (`cac confirm`)
+  that turns staged PROVISIONAL_LOCK decisions into writes.
+- `bridge/chp_gate.py` — the fatal-refusal boundary: gate refusals exit
+  `EXIT_REFUSED` and must surface as refusals, never retries or silent skips.
 
 ## PR webhook integration
 

@@ -482,6 +482,9 @@ def main() -> int:
     try:
         out, code = COMMANDS[sys.argv[1]](req)
     except Refusal as exc:
+        # CAC-REVIEW: fatal-refusal boundary — gate refusals (r0 halt,
+        # parity-fatal, floor failure) exit EXIT_REFUSED here and must surface
+        # to the caller as refusals, never as retries or silent skips.
         print(json.dumps({"error": exc.reason, **exc.payload}))
         return EXIT_REFUSED
     except ValueError as exc:
